@@ -5,20 +5,29 @@ use super::*;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 pub const ENUM_MIN_CAPABILITY: u8 = 0;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MAX_CAPABILITY: u8 = 9;
+pub const ENUM_MAX_CAPABILITY: u8 = 18;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
-pub const ENUM_VALUES_CAPABILITY: [Capability; 10] = [
+pub const ENUM_VALUES_CAPABILITY: [Capability; 19] = [
   Capability::SessionLifecycle,
   Capability::ChannelLifecycle,
   Capability::ChannelReader,
   Capability::ChannelWriter,
   Capability::ProcessLifecycle,
-  Capability::NetBind,
-  Capability::NetAccept,
-  Capability::NetConnect,
-  Capability::NetRead,
-  Capability::NetWrite,
+  Capability::NetQuicBind,
+  Capability::NetQuicAccept,
+  Capability::NetQuicConnect,
+  Capability::NetQuicRead,
+  Capability::NetQuicWrite,
+  Capability::NetHttpBind,
+  Capability::NetHttpAccept,
+  Capability::NetHttpConnect,
+  Capability::NetHttpRead,
+  Capability::NetHttpWrite,
+  Capability::NetTlsServerConfig,
+  Capability::NetTlsClientConfig,
+  Capability::SingletonRegistry,
+  Capability::SingletonLookup,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -31,25 +40,43 @@ impl Capability {
   pub const ChannelReader: Self = Self(2);
   pub const ChannelWriter: Self = Self(3);
   pub const ProcessLifecycle: Self = Self(4);
-  pub const NetBind: Self = Self(5);
-  pub const NetAccept: Self = Self(6);
-  pub const NetConnect: Self = Self(7);
-  pub const NetRead: Self = Self(8);
-  pub const NetWrite: Self = Self(9);
+  pub const NetQuicBind: Self = Self(5);
+  pub const NetQuicAccept: Self = Self(6);
+  pub const NetQuicConnect: Self = Self(7);
+  pub const NetQuicRead: Self = Self(8);
+  pub const NetQuicWrite: Self = Self(9);
+  pub const NetHttpBind: Self = Self(10);
+  pub const NetHttpAccept: Self = Self(11);
+  pub const NetHttpConnect: Self = Self(12);
+  pub const NetHttpRead: Self = Self(13);
+  pub const NetHttpWrite: Self = Self(14);
+  pub const NetTlsServerConfig: Self = Self(15);
+  pub const NetTlsClientConfig: Self = Self(16);
+  pub const SingletonRegistry: Self = Self(17);
+  pub const SingletonLookup: Self = Self(18);
 
   pub const ENUM_MIN: u8 = 0;
-  pub const ENUM_MAX: u8 = 9;
+  pub const ENUM_MAX: u8 = 18;
   pub const ENUM_VALUES: &'static [Self] = &[
     Self::SessionLifecycle,
     Self::ChannelLifecycle,
     Self::ChannelReader,
     Self::ChannelWriter,
     Self::ProcessLifecycle,
-    Self::NetBind,
-    Self::NetAccept,
-    Self::NetConnect,
-    Self::NetRead,
-    Self::NetWrite,
+    Self::NetQuicBind,
+    Self::NetQuicAccept,
+    Self::NetQuicConnect,
+    Self::NetQuicRead,
+    Self::NetQuicWrite,
+    Self::NetHttpBind,
+    Self::NetHttpAccept,
+    Self::NetHttpConnect,
+    Self::NetHttpRead,
+    Self::NetHttpWrite,
+    Self::NetTlsServerConfig,
+    Self::NetTlsClientConfig,
+    Self::SingletonRegistry,
+    Self::SingletonLookup,
   ];
   /// Returns the variant's name or "" if unknown.
   pub fn variant_name(self) -> Option<&'static str> {
@@ -59,11 +86,20 @@ impl Capability {
       Self::ChannelReader => Some("ChannelReader"),
       Self::ChannelWriter => Some("ChannelWriter"),
       Self::ProcessLifecycle => Some("ProcessLifecycle"),
-      Self::NetBind => Some("NetBind"),
-      Self::NetAccept => Some("NetAccept"),
-      Self::NetConnect => Some("NetConnect"),
-      Self::NetRead => Some("NetRead"),
-      Self::NetWrite => Some("NetWrite"),
+      Self::NetQuicBind => Some("NetQuicBind"),
+      Self::NetQuicAccept => Some("NetQuicAccept"),
+      Self::NetQuicConnect => Some("NetQuicConnect"),
+      Self::NetQuicRead => Some("NetQuicRead"),
+      Self::NetQuicWrite => Some("NetQuicWrite"),
+      Self::NetHttpBind => Some("NetHttpBind"),
+      Self::NetHttpAccept => Some("NetHttpAccept"),
+      Self::NetHttpConnect => Some("NetHttpConnect"),
+      Self::NetHttpRead => Some("NetHttpRead"),
+      Self::NetHttpWrite => Some("NetHttpWrite"),
+      Self::NetTlsServerConfig => Some("NetTlsServerConfig"),
+      Self::NetTlsClientConfig => Some("NetTlsClientConfig"),
+      Self::SingletonRegistry => Some("SingletonRegistry"),
+      Self::SingletonLookup => Some("SingletonLookup"),
       _ => None,
     }
   }

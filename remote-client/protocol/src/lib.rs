@@ -1,6 +1,10 @@
 //! Flatbuffers protocol helpers for the remote-client control plane.
 
 use flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer};
+pub use selium_abi::{
+    AbiParam, AbiScalarType, AbiScalarValue, AbiSignature, Capability, EntrypointArg,
+    GuestResourceId, GuestUint,
+};
 use thiserror::Error;
 
 /// Generated Flatbuffers bindings for the remote-client protocol.
@@ -13,95 +17,8 @@ use crate::fbs::remote_client::protocol as fb;
 
 const REMOTE_CLIENT_IDENTIFIER: &str = "RMCL";
 
-/// Guest pointer-sized unsigned integer.
-pub type GuestUint = u32;
-/// Guest-facing resource identifiers.
-pub type GuestResourceId = u64;
 /// Identifier for a writer that produced a frame.
 pub type GuestWriterId = u16;
-
-/// Kernel capability identifiers shared between host and guest.
-#[repr(u8)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum Capability {
-    SessionLifecycle = 0,
-    ChannelLifecycle = 1,
-    ChannelReader = 2,
-    ChannelWriter = 3,
-    ProcessLifecycle = 4,
-    NetBind = 5,
-    NetAccept = 6,
-    NetConnect = 7,
-    NetRead = 8,
-    NetWrite = 9,
-}
-
-/// Scalar value kinds supported by the ABI.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AbiScalarType {
-    I8,
-    U8,
-    I16,
-    U16,
-    I32,
-    U32,
-    I64,
-    U64,
-    F32,
-    F64,
-}
-
-/// Logical parameter kinds supported by the ABI.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AbiParam {
-    /// An immediate scalar value.
-    Scalar(AbiScalarType),
-    /// A byte buffer passed via (ptr, len) pair.
-    Buffer,
-}
-
-/// Description of a guest entrypoint's parameters and results.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AbiSignature {
-    params: Vec<AbiParam>,
-    results: Vec<AbiParam>,
-}
-
-/// Scalar values supported by the ABI.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum AbiScalarValue {
-    /// 8-bit signed integer.
-    I8(i8),
-    /// 8-bit unsigned integer.
-    U8(u8),
-    /// 16-bit signed integer.
-    I16(i16),
-    /// 16-bit unsigned integer.
-    U16(u16),
-    /// 32-bit signed integer.
-    I32(i32),
-    /// 32-bit unsigned integer.
-    U32(u32),
-    /// 64-bit signed integer.
-    I64(i64),
-    /// 64-bit unsigned integer.
-    U64(u64),
-    /// 32-bit IEEE float.
-    F32(f32),
-    /// 64-bit IEEE float.
-    F64(f64),
-}
-
-/// Argument supplied to a process entrypoint.
-#[derive(Debug, Clone, PartialEq)]
-pub enum EntrypointArg {
-    /// Immediate scalar value.
-    Scalar(AbiScalarValue),
-    /// Raw buffer.
-    Buffer(Vec<u8>),
-    /// Handle referring to a Selium resource.
-    Resource(GuestResourceId),
-}
 
 /// Response carrying an attributed frame.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -110,37 +27,6 @@ pub struct IoFrame {
     pub writer_id: GuestWriterId,
     /// Frame payload.
     pub payload: Vec<u8>,
-}
-
-impl AbiScalarValue {
-    pub fn kind(&self) -> AbiScalarType {
-        match self {
-            AbiScalarValue::I8(_) => AbiScalarType::I8,
-            AbiScalarValue::U8(_) => AbiScalarType::U8,
-            AbiScalarValue::I16(_) => AbiScalarType::I16,
-            AbiScalarValue::U16(_) => AbiScalarType::U16,
-            AbiScalarValue::I32(_) => AbiScalarType::I32,
-            AbiScalarValue::U32(_) => AbiScalarType::U32,
-            AbiScalarValue::I64(_) => AbiScalarType::I64,
-            AbiScalarValue::U64(_) => AbiScalarType::U64,
-            AbiScalarValue::F32(_) => AbiScalarType::F32,
-            AbiScalarValue::F64(_) => AbiScalarType::F64,
-        }
-    }
-}
-
-impl AbiSignature {
-    pub fn new(params: Vec<AbiParam>, results: Vec<AbiParam>) -> Self {
-        Self { params, results }
-    }
-
-    pub fn params(&self) -> &[AbiParam] {
-        &self.params
-    }
-
-    pub fn results(&self) -> &[AbiParam] {
-        &self.results
-    }
 }
 
 /// Requests accepted by the remote-client guest.
@@ -252,7 +138,7 @@ impl From<InvalidFlatbuffer> for ProtocolError {
 /// Encode a remote-client request into Flatbuffers bytes.
 pub fn encode_request(request: &Request) -> Result<Vec<u8>, ProtocolError> {
     let mut builder = FlatBufferBuilder::new();
-    let (payload_type, payload) = encode_request_payload(&mut builder, request);
+    let (payload_type, payload) = encode_request_payload(&mut builder, request)?;
     let message = fb::RemoteClientMessage::create(
         &mut builder,
         &fb::RemoteClientMessageArgs {
@@ -417,11 +303,14 @@ fn decode_message(bytes: &[u8]) -> Result<fb::RemoteClientMessage<'_>, ProtocolE
 fn encode_request_payload<'bldr>(
     builder: &mut FlatBufferBuilder<'bldr>,
     request: &Request,
-) -> (
-    fb::RemoteClientPayload,
-    Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
-) {
-    match request {
+) -> Result<
+    (
+        fb::RemoteClientPayload,
+        Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
+    ),
+    ProtocolError,
+> {
+    let payload = match request {
         Request::ChannelCreate(capacity) => {
             let payload = fb::ChannelCreateRequest::create(
                 builder,
@@ -467,7 +356,7 @@ fn encode_request_payload<'bldr>(
             )
         }
         Request::ProcessStart(request) => {
-            let payload = encode_process_start_request(builder, request);
+            let payload = encode_process_start_request(builder, request)?;
             (
                 fb::RemoteClientPayload::ProcessStartRequest,
                 Some(payload.as_union_value()),
@@ -493,7 +382,8 @@ fn encode_request_payload<'bldr>(
                 Some(payload.as_union_value()),
             )
         }
-    }
+    };
+    Ok(payload)
 }
 
 fn encode_response_payload<'bldr>(
@@ -601,14 +491,14 @@ fn decode_channel_ref(channel_ref: fb::ChannelRef<'_>) -> Result<ChannelRef, Pro
 fn encode_process_start_request<'bldr>(
     builder: &mut FlatBufferBuilder<'bldr>,
     request: &ProcessStartRequest,
-) -> flatbuffers::WIPOffset<fb::ProcessStartRequest<'bldr>> {
+) -> Result<flatbuffers::WIPOffset<fb::ProcessStartRequest<'bldr>>, ProtocolError> {
     let module_id = builder.create_string(&request.module_id);
     let entrypoint = builder.create_string(&request.entrypoint);
-    let capabilities = encode_capabilities(builder, &request.capabilities);
+    let capabilities = encode_capabilities(builder, &request.capabilities)?;
     let signature = encode_abi_signature(builder, &request.signature);
     let args = encode_entrypoint_args(builder, &request.args);
 
-    fb::ProcessStartRequest::create(
+    Ok(fb::ProcessStartRequest::create(
         builder,
         &fb::ProcessStartRequestArgs {
             module_id: Some(module_id),
@@ -617,7 +507,7 @@ fn encode_process_start_request<'bldr>(
             signature: Some(signature),
             args: Some(args),
         },
-    )
+    ))
 }
 
 fn decode_process_start_request(
@@ -650,9 +540,12 @@ fn decode_process_start_request(
 fn encode_capabilities<'bldr>(
     builder: &mut FlatBufferBuilder<'bldr>,
     caps: &[Capability],
-) -> flatbuffers::WIPOffset<flatbuffers::Vector<'bldr, fb::Capability>> {
-    let values: Vec<_> = caps.iter().map(|cap| encode_capability(*cap)).collect();
-    builder.create_vector(&values)
+) -> Result<flatbuffers::WIPOffset<flatbuffers::Vector<'bldr, fb::Capability>>, ProtocolError> {
+    let mut values = Vec::with_capacity(caps.len());
+    for cap in caps {
+        values.push(encode_capability(*cap)?);
+    }
+    Ok(builder.create_vector(&values))
 }
 
 fn decode_capabilities(
@@ -667,18 +560,27 @@ fn decode_capabilities(
     Ok(out)
 }
 
-fn encode_capability(value: Capability) -> fb::Capability {
+fn encode_capability(value: Capability) -> Result<fb::Capability, ProtocolError> {
     match value {
-        Capability::SessionLifecycle => fb::Capability::SessionLifecycle,
-        Capability::ChannelLifecycle => fb::Capability::ChannelLifecycle,
-        Capability::ChannelReader => fb::Capability::ChannelReader,
-        Capability::ChannelWriter => fb::Capability::ChannelWriter,
-        Capability::ProcessLifecycle => fb::Capability::ProcessLifecycle,
-        Capability::NetBind => fb::Capability::NetBind,
-        Capability::NetAccept => fb::Capability::NetAccept,
-        Capability::NetConnect => fb::Capability::NetConnect,
-        Capability::NetRead => fb::Capability::NetRead,
-        Capability::NetWrite => fb::Capability::NetWrite,
+        Capability::SessionLifecycle => Ok(fb::Capability::SessionLifecycle),
+        Capability::ChannelLifecycle => Ok(fb::Capability::ChannelLifecycle),
+        Capability::ChannelReader => Ok(fb::Capability::ChannelReader),
+        Capability::ChannelWriter => Ok(fb::Capability::ChannelWriter),
+        Capability::ProcessLifecycle => Ok(fb::Capability::ProcessLifecycle),
+        Capability::NetQuicBind => Ok(fb::Capability::NetQuicBind),
+        Capability::NetQuicAccept => Ok(fb::Capability::NetQuicAccept),
+        Capability::NetQuicConnect => Ok(fb::Capability::NetQuicConnect),
+        Capability::NetQuicRead => Ok(fb::Capability::NetQuicRead),
+        Capability::NetQuicWrite => Ok(fb::Capability::NetQuicWrite),
+        Capability::NetHttpBind => Ok(fb::Capability::NetHttpBind),
+        Capability::NetHttpAccept => Ok(fb::Capability::NetHttpAccept),
+        Capability::NetHttpConnect => Ok(fb::Capability::NetHttpConnect),
+        Capability::NetHttpRead => Ok(fb::Capability::NetHttpRead),
+        Capability::NetHttpWrite => Ok(fb::Capability::NetHttpWrite),
+        Capability::NetTlsServerConfig => Ok(fb::Capability::NetTlsServerConfig),
+        Capability::NetTlsClientConfig => Ok(fb::Capability::NetTlsClientConfig),
+        Capability::SingletonRegistry => Ok(fb::Capability::SingletonRegistry),
+        Capability::SingletonLookup => Ok(fb::Capability::SingletonLookup),
     }
 }
 
@@ -689,11 +591,20 @@ fn decode_capability(value: fb::Capability) -> Result<Capability, ProtocolError>
         fb::Capability::ChannelReader => Ok(Capability::ChannelReader),
         fb::Capability::ChannelWriter => Ok(Capability::ChannelWriter),
         fb::Capability::ProcessLifecycle => Ok(Capability::ProcessLifecycle),
-        fb::Capability::NetBind => Ok(Capability::NetBind),
-        fb::Capability::NetAccept => Ok(Capability::NetAccept),
-        fb::Capability::NetConnect => Ok(Capability::NetConnect),
-        fb::Capability::NetRead => Ok(Capability::NetRead),
-        fb::Capability::NetWrite => Ok(Capability::NetWrite),
+        fb::Capability::NetQuicBind => Ok(Capability::NetQuicBind),
+        fb::Capability::NetQuicAccept => Ok(Capability::NetQuicAccept),
+        fb::Capability::NetQuicConnect => Ok(Capability::NetQuicConnect),
+        fb::Capability::NetQuicRead => Ok(Capability::NetQuicRead),
+        fb::Capability::NetQuicWrite => Ok(Capability::NetQuicWrite),
+        fb::Capability::NetHttpBind => Ok(Capability::NetHttpBind),
+        fb::Capability::NetHttpAccept => Ok(Capability::NetHttpAccept),
+        fb::Capability::NetHttpConnect => Ok(Capability::NetHttpConnect),
+        fb::Capability::NetHttpRead => Ok(Capability::NetHttpRead),
+        fb::Capability::NetHttpWrite => Ok(Capability::NetHttpWrite),
+        fb::Capability::NetTlsServerConfig => Ok(Capability::NetTlsServerConfig),
+        fb::Capability::NetTlsClientConfig => Ok(Capability::NetTlsClientConfig),
+        fb::Capability::SingletonRegistry => Ok(Capability::SingletonRegistry),
+        fb::Capability::SingletonLookup => Ok(Capability::SingletonLookup),
         _ => Err(ProtocolError::UnknownCapability),
     }
 }

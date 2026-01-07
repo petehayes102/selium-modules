@@ -24,5 +24,5 @@ The `selium-remote-client-server` component should be added to the Selium Runtim
 ```bash
 selium-runtime \
   --work-dir /path/to/selium-runtime/work \
-  --module "path=selium_remote_client_server.wasm;capabilities=ChannelLifecycle,ChannelReader,ChannelWriter,ProcessLifecycle,NetBind,NetAccept,NetRead,NetWrite;args=utf8:localhost,u16:7000"
+  --module "path=selium_remote_client_server.wasm;capabilities=ChannelLifecycle,ChannelReader,ChannelWriter,ProcessLifecycle,NetQuicBind,NetQuicAccept,NetQuicRead,NetQuicWrite;args=utf8:localhost,u16:7000"
 ```

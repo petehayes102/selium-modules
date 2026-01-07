@@ -12,6 +12,7 @@ categories.workspace = true
 
 [dependencies]
 flatbuffers = { workspace = true }
+selium-abi = { workspace = true }
 thiserror = { workspace = true }
 
 [build-dependencies]
